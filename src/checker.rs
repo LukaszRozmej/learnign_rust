@@ -48,7 +48,7 @@ impl BlocklistStore for BlocklistCheckerStore {
         self.addresses = HashSet::from_iter(addresses);
         log::info!("Successfully refreshed blocklist with {} ips.", self.addresses.len());
         match self.persister.persist(self.addresses.iter().map(|i| *i)) {
-            Ok(_) => (),
+            Ok(_) => log::info!("Saved blocklist to DB"),
             Err(error) => log::error!("Failed to save DB: {}.", error)
         }
     }
