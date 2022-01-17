@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{Error, Read, Write};
+use std::net::Ipv4Addr;
 
 const DB: &str = "db";
 
@@ -11,31 +12,18 @@ struct FileIterator {
 }
 
 impl BlocklistPersister {
-    pub fn persist(&self, addresses: impl Iterator<Item=u32>) -> Result<(), Error> {
-        let file = File::create(DB);
-        return match file {
-            Ok(mut file) => {
-                for address in addresses {
-                    match file.write(&u32::to_be_bytes(address)) {
-                        Ok(_) => {}
-                        Err(error) => return Err(error)
-                    }
-                }
+    pub fn persist(&self, addresses: impl Iterator<Item=Ipv4Addr>) -> Result<(), Error> {
+        let mut file = File::create(DB)?;
+        for address in addresses {
+            file.write(&u32::to_be_bytes(u32::from(address)))?;
+        }
 
-                Ok(())
-            }
-            Err(error) => Err(error)
-        };
+        Ok(())
     }
 
-    pub fn load(&self) -> Result<impl Iterator<Item=u32>, Error> {
-        let file = File::open(DB);
-        return match file {
-            Ok(file) => {
-                return Ok(FileIterator::new(file));
-            }
-            Err(error) => Err(error)
-        };
+    pub fn load(&self) -> Result<impl Iterator<Item=Ipv4Addr>, Error> {
+        let file = File::open(DB)?;
+        Ok(FileIterator::new(file))
     }
 }
 
@@ -49,14 +37,14 @@ impl FileIterator {
 }
 
 impl Iterator for FileIterator {
-    type Item = u32;
+    type Item = Ipv4Addr;
 
     fn next(&mut self) -> Option<Self::Item> {
         let read = self.file.read(&mut self.buffer);
         match read {
             Ok(read) => {
                 if read == 4 {
-                    Some(u32::from_be_bytes(self.buffer))
+                    Some(Ipv4Addr::from(u32::from_be_bytes(self.buffer)))
                 } else {
                     None
                 }
@@ -74,22 +62,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_roundtrip() -> Result<(), Error> {
+    fn test_roundtrip() {
         let persister = BlocklistPersister {};
         let addresses = vec![0u32, 1u32];
-        match persister.persist(addresses.iter().copied())
-        {
-            Ok(_) => {
-                match persister.load() {
-                    Ok(iterator) => {
-                        let it = addresses.into_iter();
-                        assert!(it.eq(iterator));
-                        Ok(())
-                    }
-                    Err(error) => Err(error)
-                }
-            }
-            Err(error) => Err(error)
-        }
+        persister.persist(addresses.iter().copied())?;
+        let iterator = persister.load()?;
+        let it = addresses.into_iter();
+        assert!(it.eq(iterator));
     }
 }

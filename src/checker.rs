@@ -1,17 +1,18 @@
 use std::collections::HashSet;
 use std::iter::FromIterator;
+use std::net::Ipv4Addr;
 use crate::persister::BlocklistPersister;
 
 pub trait BlocklistChecker {
-    fn contains(&self, ip: u32) -> bool;
+    fn contains(&self, ip: &Ipv4Addr) -> bool;
 }
 
 pub trait BlocklistStore {
-    fn set_addresses<I>(&mut self, addresses : I) where I : Iterator<Item=u32>;
+    fn set_addresses<I>(&mut self, addresses : I) where I : Iterator<Item=Ipv4Addr>;
 }
 
 pub struct BlocklistCheckerStore {
-    addresses : HashSet<u32>,
+    addresses : HashSet<Ipv4Addr>,
     persister: BlocklistPersister,
 }
 
@@ -38,13 +39,13 @@ impl BlocklistCheckerStore {
 }
 
 impl BlocklistChecker for BlocklistCheckerStore {
-    fn contains(&self, ip: u32) -> bool {
+    fn contains(&self, ip: &Ipv4Addr) -> bool {
         self.addresses.contains(&ip)
     }
 }
 
 impl BlocklistStore for BlocklistCheckerStore {
-    fn set_addresses<I>(&mut self, addresses: I) where I: Iterator<Item=u32> {
+    fn set_addresses<I>(&mut self, addresses: I) where I: Iterator<Item=Ipv4Addr> {
         self.addresses = HashSet::from_iter(addresses);
         log::info!("Successfully refreshed blocklist with {} ips.", self.addresses.len());
         match self.persister.persist(self.addresses.iter().map(|i| *i)) {
