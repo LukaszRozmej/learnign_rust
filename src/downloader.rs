@@ -1,4 +1,4 @@
-use reqwest::{Client, Response};
+use reqwest::{Client, Response, StatusCode};
 use reqwest::header::{ETAG, HeaderValue, IF_NONE_MATCH};
 use crate::BlocklistStore;
 use std::sync::{Arc, RwLock};
@@ -8,7 +8,7 @@ use futures::AsyncBufReadExt;
 use futures::stream::TryStreamExt;
 use tokio::time;
 use tokio::time::Duration;
-use async_mutex::{Mutex, MutexGuard};
+use tokio::sync::{Mutex, MutexGuard};
 
 
 struct Downloader<T : BlocklistStore> {
@@ -19,7 +19,7 @@ struct Downloader<T : BlocklistStore> {
 
 pub fn start<T : BlocklistStore + Sync + Send + 'static>(store : Arc<RwLock<T>>)
 {
-    let config = Config { interval: 600, url: String::from("https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt") };
+    let config = Config { interval: 60000, url: String::from("https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt") };
     let client = Client::builder().gzip(true).brotli(true).deflate(true).build().unwrap();
     let downloader = Downloader { e_tag: String::new(), store, client };
     let downloader = Arc::new(Mutex::new(downloader));
@@ -57,7 +57,7 @@ async fn refresh<T : BlocklistStore>(mut downloader: MutexGuard<'_, Downloader<T
 
                 parse(response, &mut downloader.store).await;
             }
-            else {
+            else if status != StatusCode::NOT_MODIFIED {
                 log::info!("Server response wasn't successful.")
             }
         },
@@ -73,8 +73,8 @@ async fn parse<T: BlocklistStore>(response: Response, store: &mut Arc<RwLock<T>>
 
     let mut buffer = String::new();
     let mut values = Vec::new();
-    let x = chunks.read_line(&mut buffer).await.unwrap_or(0);
-    while x > 0  {
+    let mut length = chunks.read_line(&mut buffer).await.unwrap_or(0);
+    while length > 0  {
         if !buffer.starts_with("#") {
             if let Some(first) = buffer.split_whitespace().next() {
                 if let Ok(address) = Ipv4Addr::from_str(first) {
@@ -82,6 +82,9 @@ async fn parse<T: BlocklistStore>(response: Response, store: &mut Arc<RwLock<T>>
                 }
             }
         }
+
+        buffer.clear();
+        length = chunks.read_line(&mut buffer).await.unwrap_or(0);
     }
 
     store.write().unwrap().set_addresses(values.iter().map(|a| *a));
