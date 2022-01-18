@@ -6,7 +6,7 @@ use log::LevelFilter;
 use warp::Filter;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 mod persister;
 mod checker;
@@ -21,8 +21,8 @@ async fn main() {
 
     let persister = persister::BlocklistPersister {};
     let checker = checker::BlocklistCheckerStore::new(persister);
-    let checker = Arc::new(Mutex::new(checker));
-    let downloader = downloader::BlocklistDownloader::new(checker.clone());
+    let checker = Arc::new(RwLock::new(checker));
+    downloader::start(checker.clone());
     let checker2 = checker.clone();
 
     let ips = warp::path!("ips" / String)
@@ -30,8 +30,8 @@ async fn main() {
             match Ipv4Addr::from_str(&ip)
             {
                 Ok(address) => {
-                    let checker = checker2.lock().unwrap();
-                    String::from(if checker.contains(u32::from(address)) { "true"} else { "false" })
+                    let checker = checker2.read().unwrap();
+                    String::from(if checker.contains(&address) { "true"} else { "false" })
                 },
                 Err(error) => format!("{} is not correct IP address, {}!", &ip, error)
             }
@@ -40,6 +40,4 @@ async fn main() {
     warp::serve(ips)
         .run(([127, 0, 0, 1], 3030))
         .await;
-
-    drop(downloader);
 }

@@ -9,10 +9,10 @@ edition = "2018"
 [dependencies]
 log = { version = "0.4", features = ["std", "serde"] }
 env_logger = "0.8.4"
-timer = "0.2.0"
-chrono = "0.4.19"
-reqwest = { version = "0.11", features = ["blocking", "gzip", "brotli", "deflate"] }
-warp = "0.2"
+reqwest = { version = "0.11", features = ["stream", "gzip", "brotli", "deflate"] }
+warp = "0.3"
 parking_lot = "0.10.0"
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "0.2", features = ["macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
+tokio-util = "0.6.9"
+futures = "0.3.19"
