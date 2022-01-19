@@ -6,7 +6,7 @@ Watned to lern and use concepts as:
 * Streams
 * Async/await
 * Multithreading
-* Cross/thread state sharing for performance.
+* Cross/thread state sharing for performance (I might do a channel version too).
 * Making http calls
 * Hosting REST Api
 * File system
