@@ -1,6 +1,7 @@
 # My venture into learning rust
 
 Watned to lern and use concepts as:
+* Generics
 * Traits
 * Iterators
 * Streams
