@@ -23,14 +23,13 @@ async fn main() {
     let checker = checker::BlocklistCheckerStore::new(persister);
     let checker = Arc::new(checker);
     downloader::start(checker.clone());
-    let checker2 = checker.clone();
 
     let ips = warp::path!("ips" / String)
         .map(move |ip : String| {
             match Ipv4Addr::from_str(&ip)
             {
                 Ok(address) => {
-                    let checker = checker2;
+                    let checker = checker.clone();
                     String::from(if checker.contains(&address) { "true"} else { "false" })
                 },
                 Err(error) => format!("{} is not correct IP address, {}!", &ip, error)
