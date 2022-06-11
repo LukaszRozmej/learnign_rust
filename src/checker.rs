@@ -54,3 +54,6 @@ impl BlocklistStore for BlocklistCheckerStore {
         }
     }
 }
+
+unsafe impl Send for BlocklistCheckerStore { }
+unsafe impl Sync for BlocklistCheckerStore { }
