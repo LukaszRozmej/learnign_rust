@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::RwLock;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::net::Ipv4Addr;
@@ -13,7 +13,7 @@ pub trait BlocklistStore {
 }
 
 pub struct BlocklistCheckerStore {
-    addresses : Mutex<HashSet<Ipv4Addr>>,
+    addresses : RwLock<HashSet<Ipv4Addr>>,
     persister: BlocklistPersister,
 }
 
@@ -24,14 +24,14 @@ impl BlocklistCheckerStore {
             Ok(iterator) => {
                 log::info!("Loaded addresses from DB");
                 Self {
-                    addresses: Mutex::new(HashSet::from_iter(iterator)),
+                    addresses: RwLock::new(HashSet::from_iter(iterator)),
                     persister,
                 }
             }
             Err(error) => {
                 log::warn!("Failed to load DB on startup: {}.", error);
                 Self {
-                    addresses: Mutex::new(HashSet::new()),
+                    addresses: RwLock::new(HashSet::new()),
                     persister,
                 }
             }
@@ -41,7 +41,7 @@ impl BlocklistCheckerStore {
 
 impl BlocklistChecker for BlocklistCheckerStore {
     fn contains(&self, ip: &Ipv4Addr) -> bool {
-        self.addresses.lock().unwrap().contains(&ip)
+        self.addresses.read().unwrap().contains(&ip)
     }
 }
 
@@ -50,11 +50,11 @@ impl BlocklistStore for BlocklistCheckerStore {
         // this is not thread safe if addresses is not behind a mutex
         // self.addresses = HashSet::from_iter(addresses); 
 
-        let mut val  = self.addresses.lock().unwrap();
+        let mut val  = self.addresses.write().unwrap();
         *val = HashSet::from_iter(addresses);
 
-        log::info!("Successfully refreshed blocklist with {} ips.", self.addresses.lock().unwrap().len());
-        match self.persister.persist(self.addresses.lock().unwrap().iter().map(|i| *i)) {
+        log::info!("Successfully refreshed blocklist with {} ips.", val.len());
+        match self.persister.persist(val.iter().map(|i| *i)) {
             Ok(_) => log::info!("Saved blocklist to DB"),
             Err(error) => log::error!("Failed to save DB: {}.", error)
         }
