@@ -34,8 +34,8 @@ pub fn start<T : BlocklistStore + Sync + Send + 'static>(store : Arc<T>)
     });
 }
 
-fn convert_err(_: reqwest::Error) -> std::io::Error {
-    std::io::Error::new(ErrorKind::Other, "Web request error")
+fn convert_err(e: reqwest::Error) -> std::io::Error {
+    std::io::Error::new(ErrorKind::Other, e.status().unwrap_or_default().as_str())
 }
 
 async fn refresh<T : BlocklistStore>(mut downloader: MutexGuard<'_, Downloader<T>>, url: &str) {
