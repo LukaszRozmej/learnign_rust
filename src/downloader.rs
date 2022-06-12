@@ -1,3 +1,4 @@
+use std::io::ErrorKind;
 use reqwest::{Client, Response, StatusCode};
 use reqwest::header::{ETAG, HeaderValue, IF_NONE_MATCH};
 use crate::BlocklistStore;
@@ -33,7 +34,9 @@ pub fn start<T : BlocklistStore + Sync + Send + 'static>(store : Arc<T>)
     });
 }
 
-fn convert_err(_: reqwest::Error) -> std::io::Error { todo!() }
+fn convert_err(_: reqwest::Error) -> std::io::Error {
+    std::io::Error::new(ErrorKind::Other, "Web request error")
+}
 
 async fn refresh<T : BlocklistStore>(mut downloader: MutexGuard<'_, Downloader<T>>, url: &str) {
     let response = downloader.client
