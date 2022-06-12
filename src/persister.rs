@@ -65,9 +65,8 @@ mod tests {
     fn test_roundtrip() {
         let persister = BlocklistPersister {};
         let addresses = vec![0u32, 1u32];
-        persister.persist(addresses.iter().copied())?;
-        let iterator = persister.load()?;
-        let it = addresses.into_iter();
-        assert!(it.eq(iterator));
+        persister.persist(addresses.iter().map(|&ip| Ipv4Addr::from(ip))).expect("couldn't persist correctly");
+        let loaded = persister.load().expect("couldn't load correctly").map(|ip| u32::from(ip)).into_iter();
+        assert!(addresses.into_iter().eq(loaded));
     }
 }

@@ -1,7 +1,8 @@
+use std::io::ErrorKind;
 use reqwest::{Client, Response, StatusCode};
 use reqwest::header::{ETAG, HeaderValue, IF_NONE_MATCH};
 use crate::BlocklistStore;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::net::Ipv4Addr;
 use std::str::FromStr;
 use futures::AsyncBufReadExt;
@@ -13,11 +14,11 @@ use tokio::sync::{Mutex, MutexGuard};
 
 struct Downloader<T : BlocklistStore> {
     e_tag: String,
-    store : Arc<RwLock<T>>,
+    store : Arc<T>,
     client: Client
 }
 
-pub fn start<T : BlocklistStore + Sync + Send + 'static>(store : Arc<RwLock<T>>)
+pub fn start<T : BlocklistStore + Sync + Send + 'static>(store : Arc<T>)
 {
     let config = Config { interval: 60000, url: String::from("https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt") };
     let client = Client::builder().gzip(true).brotli(true).deflate(true).build().unwrap();
@@ -33,7 +34,9 @@ pub fn start<T : BlocklistStore + Sync + Send + 'static>(store : Arc<RwLock<T>>)
     });
 }
 
-fn convert_err(_: reqwest::Error) -> std::io::Error { todo!() }
+fn convert_err(e: reqwest::Error) -> std::io::Error {
+    std::io::Error::new(ErrorKind::Other, e.status().unwrap_or_default().as_str())
+}
 
 async fn refresh<T : BlocklistStore>(mut downloader: MutexGuard<'_, Downloader<T>>, url: &str) {
     let response = downloader.client
@@ -65,7 +68,7 @@ async fn refresh<T : BlocklistStore>(mut downloader: MutexGuard<'_, Downloader<T
     }
 }
 
-async fn parse<T: BlocklistStore>(response: Response, store: &mut Arc<RwLock<T>>) {
+async fn parse<T: BlocklistStore>(response: Response, store: &mut Arc<T>) {
     let mut chunks = response
         .bytes_stream()
         .map_err(convert_err)
@@ -87,7 +90,7 @@ async fn parse<T: BlocklistStore>(response: Response, store: &mut Arc<RwLock<T>>
         length = chunks.read_line(&mut buffer).await.unwrap_or(0);
     }
 
-    store.write().unwrap().set_addresses(values.iter().map(|a| *a));
+    store.set_addresses(values.iter().map(|a| *a));
 }
 
 pub trait HeaderValueExt {
