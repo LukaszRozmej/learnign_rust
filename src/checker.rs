@@ -9,7 +9,7 @@ pub trait BlocklistChecker {
 }
 
 pub trait BlocklistStore {
-    fn set_addresses<I>(&mut self, addresses : I) where I : Iterator<Item=Ipv4Addr>;
+    fn set_addresses<I>(&self, addresses : I) where I : Iterator<Item=Ipv4Addr>;
 }
 
 pub struct BlocklistCheckerStore {
@@ -44,19 +44,15 @@ impl BlocklistChecker for BlocklistCheckerStore {
 }
 
 impl BlocklistStore for BlocklistCheckerStore {
-    fn set_addresses<I>(&mut self, addresses: I) where I: Iterator<Item=Ipv4Addr> {
-        // this is not thread safe if addresses is not behind a mutex
-        // self.addresses = HashSet::from_iter(addresses);
+    fn set_addresses<I>(&self, addresses: I) where I: Iterator<Item=Ipv4Addr> {
+        unsafe { *self.addresses.get() = HashSet::from_iter(addresses); }
 
-        self.addresses = UnsafeCell::new(HashSet::from_iter(addresses));
+        let addresses = unsafe { &*self.addresses.get() };
 
-        unsafe {
-            let addresses = &*self.addresses.get();
-            log::info!("Successfully refreshed blocklist with {} ips.", addresses.len());
-            match self.persister.persist(addresses.iter().map(|i| *i)) {
-                Ok(_) => log::info!("Saved blocklist to DB"),
-                Err(error) => log::error!("Failed to save DB: {}.", error)
-            }
+        log::info!("Successfully refreshed blocklist with {} ips.", addresses.len());
+        match self.persister.persist(addresses.iter().map(|i| *i)) {
+            Ok(_) => log::info!("Saved blocklist to DB"),
+            Err(error) => log::error!("Failed to save DB: {}.", error)
         }
     }
 }
