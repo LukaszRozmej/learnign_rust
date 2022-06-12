@@ -9,7 +9,7 @@ pub trait BlocklistChecker {
 }
 
 pub trait BlocklistStore {
-    fn set_addresses<I>(&self, addresses : I) where I : Iterator<Item=Ipv4Addr>;
+    fn set_addresses<I>(&mut self, addresses : I) where I : Iterator<Item=Ipv4Addr>;
 }
 
 pub struct BlocklistCheckerStore {
