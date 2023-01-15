@@ -1,6 +1,6 @@
 # My venture into learning rust
 
-Watned to lern and use concepts as:
+Watned to learn and use concepts as:
 * Generics
 * Traits
 * Iterators
@@ -14,3 +14,5 @@ Watned to lern and use concepts as:
 * Pattern matching
 * Logging system
 * Writing unit tests
+* Unsafe code
+* Lock-less multi-threaded code
